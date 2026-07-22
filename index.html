@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <title>Windy Clean</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css" />
+
 <style>
 html, body { margin:0; height:100%; }
 #w { width:100%; height:100vh; }
@@ -12,11 +15,16 @@ html, body { margin:0; height:100%; }
 
 <div id="w"></div>
 
-<script src="https://api.windy.com/assets/map-forecast/embed.js"></script>
+<!-- 1️⃣ Load Leaflet FIRST -->
+<script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
 
+<!-- 2️⃣ Then load Windy -->
+<script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
+
+<!-- 3️⃣ Then initialize -->
 <script>
 windyInit({
-    key: "Ykmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh",
+    key: "kmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh",
     lat: 50,
     lon: 15,
     zoom: 6
