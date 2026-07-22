@@ -2,24 +2,12 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>CZ Paragliding Dashboard</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<title>Windy Test</title>
 <style>
-html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    font-family: Arial, sans-serif;
-}
-
-#windy {
-    width: 100%;
-    height: 100vh;
-}
+html, body { margin:0; height:100%; }
+#windy { width:100%; height:100vh; }
 </style>
 </head>
-
 <body>
 
 <div id="windy"></div>
@@ -27,88 +15,20 @@ html, body {
 <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 
 <script>
-
-// ✅ IMPORTANT: Wait until library fully loads
 window.addEventListener("load", function () {
 
-    const options = {
-        key: 'kmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh',  // <-- insert your key
+    if (typeof windyInit === "undefined") {
+        console.error("Windy failed to load.");
+        return;
+    }
+
+    windyInit({
+        key: "YOUR_WINDY_API_KEY",
         lat: 49.8,
         lon: 15.4,
-        zoom: 8,
-        overlay: 'wind',
-        level: 'surface'
-    };
-
-    windyInit(options, function (windyAPI) {
-
-        const map = windyAPI.map;
-        const L = windyAPI.L;   // ✅ CORRECT WAY to access Leaflet
-
-        // ✅ Safety limits
-        const MIN_WIND = 2;
-        const MAX_WIND = 8;
-        const MAX_GUST = 11;
-
-        const sites = [
-            { name: "Site 1", lat: 48.238592, lon: 19.306783, windMin: 225, windMax: 270 },
-            { name: "Site 2", lat: 49.4479, lon: 18.1022, windMin: 150, windMax: 240 },
-            { name: "Site 3", lat: 49.427, lon: 16.5504, windMin: 340, windMax: 60 },
-            { name: "Site 4", lat: 49.5896, lon: 18.1715, windMin: 350, windMax: 60 }
-        ];
-
-        function isDirectionInRange(dir, min, max) {
-            if (min <= max) return dir >= min && dir <= max;
-            return dir >= min || dir <= max;
-        }
-
-        sites.forEach(site => {
-
-            const url =
-                "https://api.open-meteo.com/v1/forecast?" +
-                "latitude=" + site.lat +
-                "&longitude=" + site.lon +
-                "&current=wind_direction_10m,wind_speed_10m,wind_gusts_10m";
-
-            fetch(url)
-                .then(res => res.json())
-                .then(data => {
-
-                    const windDir = data.current.wind_direction_10m;
-                    const windSpeed = data.current.wind_speed_10m;
-                    const gust = data.current.wind_gusts_10m;
-
-                    const directionOK = isDirectionInRange(windDir, site.windMin, site.windMax);
-                    const speedOK = windSpeed >= MIN_WIND && windSpeed <= MAX_WIND;
-                    const gustOK = gust <= MAX_GUST;
-
-                    const flyable = directionOK && speedOK && gustOK;
-
-                    const color = flyable ? "green" : "red";
-
-                    const marker = L.circleMarker(
-                        [site.lat, site.lon],
-                        {
-                            radius: 8,
-                            color: color,
-                            fillColor: color,
-                            fillOpacity: 0.9
-                        }
-                    ).addTo(map);
-
-                    marker.bindPopup(
-                        "<strong>" + site.name + "</strong><br>" +
-                        "Accepted: " + site.windMin + "° – " + site.windMax + "°<br><br>" +
-                        (flyable ? "🟢 FLYABLE" : "🔴 NOT FLYABLE") + "<br>" +
-                        "Direction: " + windDir + "°<br>" +
-                        "Speed: " + windSpeed + " m/s<br>" +
-                        "Gust: " + gust + " m/s"
-                    );
-
-                })
-                .catch(err => console.error(err));
-        });
-
+        zoom: 8
+    }, function (windyAPI) {
+        console.log("Windy loaded successfully");
     });
 
 });
