@@ -13,86 +13,40 @@ html, body {
     font-family: Arial, sans-serif;
 }
 
-#container {
-    display: flex;
+#map {
+    width: 100%;
     height: 100vh;
 }
 
-#sidebar {
-    width: 320px;
-    background: #f4f4f4;
-    padding: 15px;
-    overflow-y: auto;
-    border-right: 1px solid #ddd;
-}
-
-.location-item {
-    padding: 10px;
-    margin-bottom: 12px;
-    border-radius: 6px;
-    background: #e9e9e9;
-    cursor: pointer;
-}
-
-.location-item:hover {
-    background: #ddd;
-}
-
-.status {
-    margin-top: 6px;
-    font-weight: bold;
-}
-
-.flyable {
-    color: green;
-}
-
-.not-flyable {
-    color: red;
-}
-
-iframe {
-    flex-grow: 1;
-    border: none;
-}
-
-@media (max-width: 768px) {
-    #container {
-        flex-direction: column;
-    }
-    #sidebar {
-        width: 100%;
-        height: 300px;
-    }
+.leaflet-popup-content {
+    font-size: 14px;
 }
 </style>
 </head>
 
 <body>
 
-<div id="container">
+<div id="map"></div>
 
-    <div id="sidebar">
-        <h2>🪂 Flying Sites</h2>
-        <div id="siteList"></div>
-        <p><small>Auto refresh: 10 minutes</small></p>
-    </div>
-
-    <iframe
-        id="windyFrame"
-        src="https://embed.windy.com/embed2.html?lat=49.8&lon=15.4&zoom=8&level=surface&overlay=wind&type=map"
-        width="100%"
-        height="100%">
-    </iframe>
-
-</div>
+<!-- Windy API -->
+<script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 
 <script>
 
+// ✅ INSERT YOUR WINDY API KEY HERE
+const options = {
+    key: 'YOUR_WINDY_API_KEY',
+    lat: 49.8,
+    lon: 15.4,
+    zoom: 8,
+    overlay: 'wind',
+    level: 'surface'
+};
+
 // ✅ Safety limits
-const MIN_WIND = 2;     // m/s
-const MAX_WIND = 8;     // m/s
-const MAX_GUST = 11;    // m/s
+const MIN_WIND = 2;
+const MAX_WIND = 8;
+const MAX_GUST = 11;
 
 // ✅ Flying sites
 const sites = [
@@ -126,44 +80,7 @@ const sites = [
     }
 ];
 
-const siteList = document.getElementById("siteList");
-
-// ✅ Build UI
-sites.forEach(site => {
-
-    const div = document.createElement("div");
-    div.className = "location-item";
-    div.id = "site-" + site.lat;
-
-    div.innerHTML =
-        "<strong>" + site.name + "</strong><br>" +
-        "Accepted: " + site.windMin + "° – " + site.windMax + "°" +
-        "<div class='status' id='status-" + site.lat + "'>Checking...</div>";
-
-    div.onclick = function() {
-        setLocation(site);
-    };
-
-    siteList.appendChild(div);
-});
-
-// ✅ Windy map navigation
-function setLocation(site) {
-    const iframe = document.getElementById("windyFrame");
-    iframe.src =
-        "https://embed.windy.com/embed2.html?" +
-        "lat=" + site.lat +
-        "&lon=" + site.lon +
-        "&zoom=12" +
-        "&level=surface" +
-        "&overlay=wind" +
-        "&marker=true" +
-        "&detail=true" +
-        "&detailLat=" + site.lat +
-        "&detailLon=" + site.lon;
-}
-
-// ✅ Handle direction sectors (including 0° crossing)
+// ✅ Direction logic
 function isDirectionInRange(dir, min, max) {
     if (min <= max) {
         return dir >= min && dir <= max;
@@ -171,8 +88,21 @@ function isDirectionInRange(dir, min, max) {
     return dir >= min || dir <= max;
 }
 
-// ✅ Wind check
-function checkWind(site) {
+// ✅ Initialize Windy
+windyInit(options, windyAPI => {
+
+    const { map } = windyAPI;
+
+    sites.forEach(site => {
+
+        checkWind(site, map);
+
+    });
+
+});
+
+// ✅ Fetch wind data + create marker
+function checkWind(site, map) {
 
     const url =
         "https://api.open-meteo.com/v1/forecast?" +
@@ -188,43 +118,38 @@ function checkWind(site) {
             const windSpeed = data.current.wind_speed_10m;
             const gust = data.current.wind_gusts_10m;
 
-            const statusDiv = document.getElementById("status-" + site.lat);
-
             const directionOK = isDirectionInRange(windDir, site.windMin, site.windMax);
             const speedOK = windSpeed >= MIN_WIND && windSpeed <= MAX_WIND;
             const gustOK = gust <= MAX_GUST;
 
-            if (directionOK && speedOK && gustOK) {
-                statusDiv.innerHTML =
-                    "🟢 FLYABLE<br>" +
-                    windDir + "° | " +
-                    windSpeed + " m/s | gust " +
-                    gust + " m/s";
-                statusDiv.className = "status flyable";
-            } else {
-                statusDiv.innerHTML =
-                    "🔴 NOT FLYABLE<br>" +
-                    windDir + "° | " +
-                    windSpeed + " m/s | gust " +
-                    gust + " m/s";
-                statusDiv.className = "status not-flyable";
-            }
+            const flyable = directionOK && speedOK && gustOK;
+
+            const markerColor = flyable ? "green" : "red";
+
+            const marker = L.circleMarker(
+                [site.lat, site.lon],
+                {
+                    radius: 8,
+                    color: markerColor,
+                    fillColor: markerColor,
+                    fillOpacity: 0.9
+                }
+            ).addTo(map);
+
+            marker.bindPopup(
+                "<strong>" + site.name + "</strong><br>" +
+                "Accepted: " + site.windMin + "° – " + site.windMax + "°<br><br>" +
+                (flyable ? "🟢 FLYABLE" : "🔴 NOT FLYABLE") + "<br>" +
+                "Direction: " + windDir + "°<br>" +
+                "Speed: " + windSpeed + " m/s<br>" +
+                "Gust: " + gust + " m/s"
+            );
 
         })
         .catch(error => {
             console.error("Wind fetch error:", error);
         });
 }
-
-// ✅ Initial check
-function checkAllSites() {
-    sites.forEach(site => checkWind(site));
-}
-
-checkAllSites();
-
-// ✅ Auto refresh every 10 minutes
-setInterval(checkAllSites, 600000);
 
 </script>
 
