@@ -12,26 +12,17 @@ html, body { margin:0; height:100%; }
 
 <div id="w"></div>
 
-<script src="https://api.windy.com/assets/map-forecast/libBoot.js?v=1"></script>
+<script src="https://api.windy.com/assets/map-forecast/embed.js"></script>
 
 <script>
-function startWindy() {
-    if (typeof windyInit !== "function") {
-        setTimeout(startWindy, 100);
-        return;
-    }
-
-    windyInit({
-        key: "kmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh",
-        lat: 50,
-        lon: 15,
-        zoom: 6
-    }, function (windyAPI) {
-        console.log("✅ Windy fully loaded");
-    });
-}
-
-startWindy();
+windyInit({
+    key: "Ykmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh",
+    lat: 50,
+    lon: 15,
+    zoom: 6
+}, function (windyAPI) {
+    console.log("✅ Windy fully loaded");
+});
 </script>
 
 </body>
