@@ -37,15 +37,19 @@ html, body {
     background: #ddd;
 }
 
-button {
-    width: 100%;
-    margin-bottom: 6px;
-    padding: 6px;
-    cursor: pointer;
+iframe {
+    flex-grow: 1;
+    border: none;
 }
 
-#windy {
-    flex-grow: 1;
+@media (max-width: 768px) {
+    #container {
+        flex-direction: column;
+    }
+    #sidebar {
+        width: 100%;
+        height: 220px;
+    }
 }
 </style>
 </head>
@@ -53,81 +57,48 @@ button {
 <body>
 
 <div id="container">
+
     <div id="sidebar">
         <h2>Flying Sites (CZ)</h2>
-        <div id="locationList"></div>
 
-        <h3>Layers</h3>
-        <button onclick="store.set('overlay','wind')">Wind</button>
-        <button onclick="store.set('overlay','gust')">Gust</button>
-        <button onclick="store.set('overlay','clouds')">Clouds</button>
-        <button onclick="store.set('overlay','temp')">Temperature</button>
-        <button onclick="store.set('overlay','rain')">Rain</button>
-
-        <h3>Levels</h3>
-        <button onclick="store.set('level','surface')">Surface</button>
-        <button onclick="store.set('level','850h')">1500m (850hPa)</button>
+        <div class="location-item" onclick="setLocation(50.7322,14.9840)">Ještěd</div>
+        <div class="location-item" onclick="setLocation(50.5836,15.2594)">Kozákov</div>
+        <div class="location-item" onclick="setLocation(50.6526,15.7399)">Černá hora</div>
+        <div class="location-item" onclick="setLocation(49.5044,18.2257)">Radhošť</div>
+        <div class="location-item" onclick="setLocation(48.8754,16.6428)">Pálava</div>
+        <div class="location-item" onclick="setLocation(50.3967,12.9683)">Klínovec</div>
+        <div class="location-item" onclick="setLocation(50.3865,14.2910)">Říp</div>
     </div>
 
-    <div id="windy"></div>
+    <iframe
+        id="windyFrame"
+        width="100%"
+        height="100%"
+        src="https://embed.windy.com/embed2.html?lat=49.8175&lon=15.4730&zoom=8&level=surface&overlay=wind&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=49.8175&detailLon=15.4730&metricWind=default&metricTemp=default&radarRange=-1"
+    ></iframe>
+
 </div>
 
-<!-- ✅ Windy official embed loader -->
-<script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
-
 <script>
-const options = {
-    key: 'kmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh',
-    lat: 49.8175,
-    lon: 15.4730,
-    zoom: 8,
-    overlay: 'wind',
-    level: 'surface'
-};
+function setLocation(lat, lon) {
 
-const locations = [
-    { name: "Ještěd", lat: 50.7322, lon: 14.9840 },
-    { name: "Kozákov", lat: 50.5836, lon: 15.2594 },
-    { name: "Černá hora", lat: 50.6526, lon: 15.7399 },
-    { name: "Radhošť", lat: 49.5044, lon: 18.2257 },
-    { name: "Pálava", lat: 48.8754, lon: 16.6428 },
-    { name: "Klínovec", lat: 50.3967, lon: 12.9683 },
-    { name: "Říp", lat: 50.3865, lon: 14.2910 }
-];
+    const iframe = document.getElementById("windyFrame");
 
-windyInit(options, windyAPI => {
-
-    const { map, L, store: windyStore } = windyAPI;
-
-    // ✅ make store global so buttons work
-    window.store = windyStore;
-
-    // ✅ best model for CZ
-    windyStore.set('model', 'ecmwf');
-
-    const locationList = document.getElementById("locationList");
-
-    locations.forEach(loc => {
-
-        const marker = L.marker([loc.lat, loc.lon])
-            .addTo(map)
-            .bindPopup("<b>" + loc.name + "</b>");
-
-        const div = document.createElement("div");
-        div.className = "location-item";
-        div.innerText = loc.name;
-
-        div.onclick = function() {
-            map.setView([loc.lat, loc.lon], 11);
-            windyStore.set('lat', loc.lat);
-            windyStore.set('lon', loc.lon);
-            marker.openPopup();
-        };
-
-        locationList.appendChild(div);
-    });
-
-});
+    iframe.src =
+        "https://embed.windy.com/embed2.html?" +
+        "lat=" + lat +
+        "&lon=" + lon +
+        "&zoom=11" +
+        "&level=surface" +
+        "&overlay=wind" +
+        "&menu=&message=true&marker=true" +
+        "&calendar=&pressure=&type=map" +
+        "&location=coordinates" +
+        "&detail=true" +
+        "&detailLat=" + lat +
+        "&detailLon=" + lon +
+        "&metricWind=default&metricTemp=default";
+}
 </script>
 
 </body>
