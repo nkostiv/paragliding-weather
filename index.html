@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Windy Forecast Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: Arial, sans-serif;
+    }
+
+    #container {
+        display: flex;
+        height: 100vh;
+    }
+
+    #sidebar {
+        width: 250px;
+        background: #f4f4f4;
+        padding: 15px;
+        overflow-y: auto;
+        border-right: 1px solid #ddd;
+    }
+
+    #sidebar h2 {
+        margin-top: 0;
+        font-size: 18px;
+    }
+
+    .location-item {
+        padding: 8px;
+        cursor: pointer;
+        border-radius: 4px;
+        margin-bottom: 5px;
+    }
+
+    .location-item:hover {
+        background: #e0e0e0;
+    }
+
+    #windy {
+        flex-grow: 1;
+    }
+
+    @media (max-width: 768px) {
+        #container {
+            flex-direction: column;
+        }
+        #sidebar {
+            width: 100%;
+            height: 150px;
+            display: flex;
+            overflow-x: auto;
+        }
+        .location-item {
+            min-width: 120px;
+            text-align: center;
+        }
+    }
+</style>
+
+<script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
+</head>
+
+<body>
+
+<div id="container">
+    <div id="sidebar">
+        <h2>Locations</h2>
+        <div id="locationList"></div>
+    </div>
+    <div id="windy"></div>
+</div>
+
+<script>
+    const locations = [
+        { name: "Chicago", lat: 41.8781, lon: -87.6298 },
+        { name: "Dallas", lat: 32.7767, lon: -96.7970 },
+        { name: "Denver", lat: 39.7392, lon: -104.9903 },
+        { name: "Atlanta", lat: 33.7490, lon: -84.3880 },
+        { name: "Seattle", lat: 47.6062, lon: -122.3321 },
+        { name: "Miami", lat: 25.7617, lon: -80.1918 },
+        { name: "Boston", lat: 42.3601, lon: -71.0589 },
+        { name: "Phoenix", lat: 33.4484, lon: -112.0740 },
+        { name: "Minneapolis", lat: 44.9778, lon: -93.2650 },
+        { name: "Detroit", lat: 42.3314, lon: -83.0458 }
+    ];
+
+    const options = {
+        key: 'kmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh',
+        lat: 39.8283,
+        lon: -98.5795,
+        zoom: 4,
+        overlay: 'wind'
+    };
+
+    windyInit(options, windyAPI => {
+        const { map, L, store } = windyAPI;
+
+        const locationList = document.getElementById("locationList");
+
+        locations.forEach(loc => {
+
+            // Add marker
+            const marker = L.marker([loc.lat, loc.lon])
+                .addTo(map)
+                .bindPopup(`<b>${loc.name}</b>`);
+
+            // Sidebar item
+            const div = document.createElement("div");
+            div.className = "location-item";
+            div.innerText = loc.name;
+
+            div.onclick = () => {
+                map.setView([loc.lat, loc.lon], 7);
+                store.set('lat', loc.lat);
+                store.set('lon', loc.lon);
+                marker.openPopup();
+            };
+
+            locationList.appendChild(div);
+        });
+    });
+</script>
+
+</body>
+</html>
