@@ -15,9 +15,9 @@ html, body { margin:0; height:100%; }
 <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 
 <script>
-function boot() {
+function startWindy() {
     if (typeof windyInit !== "function") {
-        setTimeout(boot, 100);
+        setTimeout(startWindy, 100);
         return;
     }
 
@@ -27,11 +27,11 @@ function boot() {
         lon: 15,
         zoom: 6
     }, function (windyAPI) {
-        console.log("✅ Windy loaded");
+        console.log("✅ Windy fully loaded");
     });
 }
 
-boot();
+startWindy();
 </script>
 
 </body>
