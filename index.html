@@ -8,20 +8,20 @@
 
 <style>
 html, body { margin:0; height:100%; }
-#w { width:100%; height:100vh; }
+#windy { width:100%; height:100vh; }
 </style>
 </head>
 <body>
 
-<div id="w"></div>
+<div id="windy"></div>
 
-<!-- 1️⃣ Load Leaflet FIRST -->
+<!-- 1️⃣ Leaflet first -->
 <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
 
-<!-- 2️⃣ Then load Windy -->
+<!-- 2️⃣ Windy second -->
 <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 
-<!-- 3️⃣ Then initialize -->
+<!-- 3️⃣ Initialize -->
 <script>
 windyInit({
     key: "kmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh",
