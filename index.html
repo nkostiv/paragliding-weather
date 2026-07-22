@@ -82,6 +82,11 @@ html, body {
     transform: scale(0.98);
 }
 
+#unitToggle:focus {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
 #loadingSpinner {
     display: none;
     width: 20px;
@@ -212,6 +217,11 @@ html, body {
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
+.details-link:focus {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 2px;
+}
+
 .details-link:active {
     transform: translateY(0);
 }
@@ -240,6 +250,11 @@ html, body {
 
 #closePanel:hover {
     background: rgba(255, 255, 255, 0.3);
+}
+
+#closePanel:focus {
+    outline: 2px solid white;
+    outline-offset: 2px;
 }
 
 /* Responsive */
@@ -336,115 +351,26 @@ html, body {
 <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
 <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 
+<!-- Load modular components -->
+<script src="js/modules/Logger.js"></script>
+<script src="js/modules/UnitConverter.js"></script>
+<script src="js/modules/WindDirection.js"></script>
+<script src="js/modules/FlyabilityAssessment.js"></script>
+<script src="js/modules/AppState.js"></script>
+
+<!-- Application initialization -->
 <script>
 // ============================================================================
-// Application State
+// Application Initialization
 // ============================================================================
 
-let state = {
-    sites: [],
-    markers: new Map(),
-    currentUnit: CONFIG.app.defaultUnit,
-    mapInstance: null
-};
+let state = new AppState();
 
-// ============================================================================
-// Utility: Logging (respects CONFIG.app.debug)
-// ============================================================================
+// Initialize logger with config
+Logger.initialize({ debug: CONFIG.app.debug, enableConsole: true });
 
-const log = {
-    info: (msg, data) => CONFIG.app.debug && console.log(`[INFO] ${msg}`, data || ''),
-    warn: (msg, data) => console.warn(`[WARN] ${msg}`, data || ''),
-    error: (msg, data) => console.error(`[ERROR] ${msg}`, data || '')
-};
-
-// ============================================================================
-// Unit Conversion Utilities
-// ============================================================================
-
-const UnitConverter = {
-    msToKmh: (ms) => (ms * 3.6).toFixed(1),
-    msToKnots: (ms) => (ms * 1.944).toFixed(1),
-    msToMph: (ms) => (ms * 2.237).toFixed(1),
-    
-    mToFt: (m) => (m * 3.28084).toFixed(0),
-    
-    convertSpeed: (ms, unit) => {
-        switch (unit) {
-            case 'kmh': return UnitConverter.msToKmh(ms);
-            case 'knots': return UnitConverter.msToKnots(ms);
-            case 'mph': return UnitConverter.msToMph(ms);
-            default: return ms.toFixed(1);
-        }
-    },
-    
-    convertAltitude: (m, unit) => {
-        if (unit === 'ft') return UnitConverter.mToFt(m);
-        return m;
-    }
-};
-
-// ============================================================================
-// Wind Direction Utilities
-// ============================================================================
-
-/**
- * Check if a wind direction falls within a given range
- * Handles ranges that cross 0° (e.g., 340° - 60°)
- */
-function isDirectionInRange(dir, min, max) {
-    if (min <= max) {
-        return dir >= min && dir <= max;
-    }
-    return dir >= min || dir <= max;
-}
-
-/**
- * Convert wind direction in degrees to cardinal direction
- * @param {number} deg - Degrees (0-360)
- * @returns {string} Cardinal direction (N, NNE, NE, etc.)
- */
-function getCardinalDirection(deg) {
-    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
-    const index = Math.round(deg / 22.5) % 16;
-    return directions[index];
-}
-
-// ============================================================================
-// Flyability Assessment
-// ============================================================================
-
-/**
- * Assess flyability based on current weather conditions
- * @param {number} windDir - Wind direction in degrees
- * @param {number} windSpeed - Wind speed in m/s
- * @param {number} gust - Gust speed in m/s
- * @param {number} siteWindMin - Site's minimum acceptable wind direction
- * @param {number} siteWindMax - Site's maximum acceptable wind direction
- * @returns {object} Assessment object with status and conditions
- */
-function assessFlyability(windDir, windSpeed, gust, siteWindMin, siteWindMax) {
-    const thresholds = CONFIG.windThresholds[state.currentUnit];
-    
-    const directionOK = isDirectionInRange(windDir, siteWindMin, siteWindMax);
-    const speedOK = windSpeed >= thresholds.min && windSpeed <= thresholds.max;
-    const gustOK = gust <= thresholds.maxGust;
-    
-    let status = 'flyable';
-    if (!directionOK || gust > thresholds.maxGust) {
-        status = 'unflyable';
-    } else if (windSpeed < thresholds.min || windSpeed > thresholds.max || (windSpeed > thresholds.max * 0.9)) {
-        status = 'marginal';
-    }
-    
-    return {
-        status,
-        directionOK,
-        speedOK,
-        gustOK,
-        flyable: status === 'flyable'
-    };
-}
+Logger.info('Application initializing...');
+Logger.debug('Configuration loaded', CONFIG);
 
 // ============================================================================
 // Marker Icon Generation
@@ -459,7 +385,7 @@ function createMarkerIcon(windDir, flyable, siteWindMin, siteWindMax) {
     let start = siteWindMin;
     let end = siteWindMax;
     let sectorStyle;
-    
+
     if (start <= end) {
         sectorStyle = `conic-gradient(
             transparent 0deg ${start}deg,
@@ -473,10 +399,10 @@ function createMarkerIcon(windDir, flyable, siteWindMin, siteWindMax) {
             rgba(34, 197, 94, 0.6) ${start}deg 360deg
         )`;
     }
-    
+
     // Determine border color based on flyability
     const borderColor = flyable ? '#22c55e' : '#ef4444';
-    
+
     const iconHTML = `
         <div style="position: relative; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
             <!-- Background circle -->
@@ -488,7 +414,7 @@ function createMarkerIcon(windDir, flyable, siteWindMin, siteWindMax) {
                 background: ${borderColor};
                 opacity: 0.15;
             "></div>
-            
+
             <!-- Border circle -->
             <div style="
                 position: absolute;
@@ -498,7 +424,7 @@ function createMarkerIcon(windDir, flyable, siteWindMin, siteWindMax) {
                 border: 3px solid ${borderColor};
                 box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
             "></div>
-            
+
             <!-- Wind sector -->
             <div style="
                 position: absolute;
@@ -508,7 +434,7 @@ function createMarkerIcon(windDir, flyable, siteWindMin, siteWindMax) {
                 background: ${sectorStyle};
                 opacity: 0.5;
             "></div>
-            
+
             <!-- Status indicator -->
             <div style="
                 position: relative;
@@ -519,7 +445,7 @@ function createMarkerIcon(windDir, flyable, siteWindMin, siteWindMax) {
             </div>
         </div>
     `;
-    
+
     return L.divIcon({
         className: '',
         html: iconHTML,
@@ -544,28 +470,28 @@ async function fetchWeatherData(site) {
         url.searchParams.set('latitude', site.geometry.coordinates[1]);
         url.searchParams.set('longitude', site.geometry.coordinates[0]);
         url.searchParams.set('current', CONFIG.weather.currentParams);
-        
+
         const response = await fetch(url, { timeout: CONFIG.weather.timeout });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
+
         const data = await response.json();
-        
+
         if (!data.current) {
-            log.warn(`Invalid API response for ${site.properties.name}`);
+            Logger.warn(`Invalid API response for ${site.properties.name}`);
             return null;
         }
-        
+
         const { wind_direction_10m: windDir, wind_speed_10m: windSpeed, wind_gusts_10m: gust } = data.current;
-        
+
         if (windDir == null || windSpeed == null || gust == null) {
-            log.warn(`Missing wind data for ${site.properties.name}`);
+            Logger.warn(`Missing wind data for ${site.properties.name}`);
             return null;
         }
-        
-        log.info(`Weather data fetched for ${site.properties.name}`, { windDir, windSpeed, gust });
+
+        Logger.info(`Weather data fetched for ${site.properties.name}`, { windDir, windSpeed, gust });
         return { windDir, windSpeed, gust };
     } catch (error) {
-        log.error(`Weather fetch error for ${site.properties.name}`, error);
+        Logger.error(`Weather fetch error for ${site.properties.name}`, error);
         return null;
     }
 }
@@ -579,25 +505,27 @@ async function fetchWeatherData(site) {
  */
 async function loadSites() {
     document.getElementById('loadingSpinner').style.display = 'block';
-    
+    state.set('loading', true);
+
     try {
         const response = await fetch(CONFIG.sites.dataFile);
         if (!response.ok) throw new Error(`Failed to load ${CONFIG.sites.dataFile}: ${response.status}`);
-        
+
         const geojson = await response.json();
-        state.sites = geojson.features;
-        
-        log.info(`Loaded ${state.sites.length} sites from ${CONFIG.sites.dataFile}`);
-        
+        state.set('sites', geojson.features);
+
+        Logger.info(`Loaded ${geojson.features.length} sites from ${CONFIG.sites.dataFile}`);
+
         // Load weather for all sites
-        for (const site of state.sites) {
+        for (const site of geojson.features) {
             addSiteMarker(site);
         }
     } catch (error) {
-        log.error('Error loading sites', error);
+        Logger.error('Error loading sites', error);
         alert(`Failed to load paragliding sites from ${CONFIG.sites.dataFile}. Please refresh the page.`);
     } finally {
         document.getElementById('loadingSpinner').style.display = 'none';
+        state.set('loading', false);
     }
 }
 
@@ -616,28 +544,39 @@ function addMarkerToMap(site, weatherData) {
     const { coordinates } = site.geometry;
     const { name } = site.properties;
     const { from_deg: windMin, to_deg: windMax } = site.properties.wind_range;
-    
+
+    const mapInstance = state.get('mapInstance');
+    const currentUnit = state.get('currentUnit');
+
     let flyable = false;
     let windDir = null;
     let windSpeed = null;
     let gust = null;
-    
+
     if (weatherData) {
         windDir = weatherData.windDir;
         windSpeed = weatherData.windSpeed;
         gust = weatherData.gust;
-        
-        const assessment = assessFlyability(windDir, windSpeed, gust, windMin, windMax);
+
+        const thresholds = CONFIG.windThresholds[currentUnit];
+        const assessment = FlyabilityAssessment.assess(
+            weatherData,
+            { windMin, windMax },
+            thresholds
+        );
         flyable = assessment.flyable;
     }
-    
+
     const icon = createMarkerIcon(windDir || 0, flyable, windMin, windMax);
-    
+
     const marker = L.marker([coordinates[1], coordinates[0]], { icon })
-        .addTo(state.mapInstance)
+        .addTo(mapInstance)
         .on('click', () => showInfoPanel(site, weatherData));
-    
-    state.markers.set(name, { marker, site, weatherData });
+
+    // Store marker for later updates
+    const markers = state.get('markers');
+    markers.set(name, { marker, site, weatherData });
+    state.set('markers', markers);
 }
 
 // ============================================================================
@@ -651,10 +590,11 @@ function showInfoPanel(site, weatherData) {
     const { name } = site.properties;
     const { from_deg: windMin, to_deg: windMax } = site.properties.wind_range;
     const { website } = site.properties;
-    
+    const currentUnit = state.get('currentUnit');
+
     const panel = document.getElementById('infoPanel');
     const statusDiv = document.getElementById('flyabilityStatus');
-    
+
     if (!weatherData) {
         // Show panel with data unavailable
         document.getElementById('siteName').textContent = name;
@@ -667,44 +607,45 @@ function showInfoPanel(site, weatherData) {
         document.getElementById('detailsLink').href = website;
         panel.classList.add('visible');
         document.getElementById('closePanel').classList.add('visible');
-        log.info(`Displayed info panel for ${name} (no weather data)`);
+        Logger.info(`Displayed info panel for ${name} (no weather data)`);
         return;
     }
-    
+
     const { windDir, windSpeed, gust } = weatherData;
-    const assessment = assessFlyability(windDir, windSpeed, gust, windMin, windMax);
-    const units = CONFIG.unitSystems[state.currentUnit];
-    
+    const thresholds = CONFIG.windThresholds[currentUnit];
+    const assessment = FlyabilityAssessment.assess(
+        weatherData,
+        { windMin, windMax },
+        thresholds
+    );
+    const units = CONFIG.unitSystems[currentUnit];
+
     // Convert units
-    const convertedSpeed = UnitConverter.convertSpeed(windSpeed, state.currentUnit);
-    const convertedGust = UnitConverter.convertSpeed(gust, state.currentUnit);
-    
+    const convertedSpeed = UnitConverter.convertSpeed(windSpeed, currentUnit);
+    const convertedGust = UnitConverter.convertSpeed(gust, currentUnit);
+
     // Update panel content
     document.getElementById('siteName').textContent = name;
-    
+
     // Flyability status
-    const statusText = {
-        flyable: `✅ FLYABLE - Perfect conditions!`,
-        marginal: `⚠️ MARGINAL - Use caution`,
-        unflyable: `❌ UNFLYABLE - Too dangerous`
-    };
-    statusDiv.textContent = statusText[assessment.status];
-    statusDiv.className = `flyability-status ${assessment.status}`;
-    
+    const statusMessage = FlyabilityAssessment.getStatusMessage(assessment.status);
+    statusDiv.textContent = `${statusMessage.emoji} ${statusMessage.text} - ${statusMessage.description}`;
+    statusDiv.className = FlyabilityAssessment.getStatusClass(assessment.status);
+
     // Wind info
-    document.getElementById('windDirection').textContent = `${windDir}° ${getCardinalDirection(windDir)}`;
+    document.getElementById('windDirection').textContent = WindDirection.format(windDir);
     document.getElementById('windSpeed').textContent = `${convertedSpeed} ${units.speed}`;
     document.getElementById('gustSpeed').textContent = `${convertedGust} ${units.speed}`;
     document.getElementById('siteWindRange').textContent = `${windMin}° – ${windMax}°`;
-    
+
     // Details link
     document.getElementById('detailsLink').href = website;
-    
+
     // Show panel
     panel.classList.add('visible');
     document.getElementById('closePanel').classList.add('visible');
-    
-    log.info(`Displayed info panel for ${name}`, assessment);
+
+    Logger.info(`Displayed info panel for ${name}`, assessment);
 }
 
 /**
@@ -721,8 +662,8 @@ function closeInfoPanel() {
 // ============================================================================
 
 document.getElementById('unitToggle').addEventListener('change', (e) => {
-    state.currentUnit = e.target.value;
-    log.info(`Unit system changed to: ${state.currentUnit}`);
+    state.set('currentUnit', e.target.value);
+    Logger.info(`Unit system changed to: ${e.target.value}`);
     closeInfoPanel();
 });
 
@@ -736,6 +677,18 @@ document.getElementById('windy').addEventListener('click', (e) => {
 });
 
 // ============================================================================
+// State Change Listeners
+// ============================================================================
+
+state.subscribe('loading', (isLoading) => {
+    Logger.debug('Loading state changed', { isLoading });
+});
+
+state.subscribe('currentUnit', (unit) => {
+    Logger.debug('Unit changed', { unit });
+});
+
+// ============================================================================
 // Application Initialization
 // ============================================================================
 
@@ -745,15 +698,15 @@ document.getElementById('windy').addEventListener('click', (e) => {
 function initializeApp(windyAPI) {
     // Set app title
     document.getElementById('appTitle').textContent = CONFIG.app.title;
-    
+
     // Store Leaflet map instance from Windy
-    state.mapInstance = windyAPI.map;
-    log.info('Windy API initialized');
-    
+    state.set('mapInstance', windyAPI.map);
+    Logger.info('Windy API initialized');
+
     // Load paragliding sites
     loadSites();
-    
-    log.info('Application initialized with config:', CONFIG);
+
+    Logger.info('Application initialized successfully');
 }
 
 // Initialize Windy with config
