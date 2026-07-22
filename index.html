@@ -46,6 +46,47 @@ html, body {
     font-size: 16px;
 }
 
+.site-marker {
+    position: relative;
+    width: 60px;
+    height: 60px;
+}
+
+.site-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 2px solid white;
+    background: rgba(0,0,0,0.4);
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.wind-sector {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: conic-gradient(
+        yellow VAR_START,
+        yellow VAR_END,
+        transparent VAR_END
+    );
+    opacity: 0.6;
+}
+
+.wind-arrow {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    text-align: center;
+    line-height: 60px;
+    font-size: 28px;
+    color: red;
+    transform-origin: center;
+}
+
 /* ✅ Mobile adjustments */
 @media (max-width: 768px) {
     .wind-marker {
@@ -123,26 +164,37 @@ function checkWind(site, map) {
             const gustOK = gust <= MAX_GUST;
 
             const flyable = directionOK && speedOK && gustOK;
-            const markerColor = flyable ? "lime" : "red";
+            // ✅ Only show red arrow if direction is NOT acceptable
+const arrowHTML = directionOK
+    ? ''
+    : `<div class="wind-arrow"
+           style="transform: rotate(${windDir}deg);">
+           ▲
+       </div>`;
 
-            // ✅ Rotating arrow icon
-            const arrowIcon = L.divIcon({
-                className: '',
-                html:
-                    '<div class="wind-marker" style="color:' + markerColor +
-                    '; transform: rotate(' + windDir + 'deg);">▲</div>',
-                iconSize: [30, 30],
-                iconAnchor: [15, 15]
-            });
+const iconHTML = `
+<div class="site-marker">
+    <div class="site-circle"></div>
+    <div class="wind-sector" style="background:${sectorStyle};"></div>
+    ${arrowHTML}
+</div>
+`;
 
-            const marker = L.marker([site.lat, site.lon], {
-                icon: arrowIcon
-            }).addTo(map);
+const customIcon = L.divIcon({
+    className: '',
+    html: iconHTML,
+    iconSize: [60, 60],
+    iconAnchor: [30, 30]
+});
 
-            marker.on("click", () => {
-                showInfoPanel(site, windDir, windSpeed, gust, flyable);
-                map.setView([site.lat, site.lon], 10);
-            });
+const marker = L.marker([site.lat, site.lon], {
+    icon: customIcon
+}).addTo(map);
+
+marker.on("click", () => {
+    showInfoPanel(site, windDir, windSpeed, gust, flyable);
+    map.setView([site.lat, site.lon], 10);
+});
 
         })
         .catch(error => {
