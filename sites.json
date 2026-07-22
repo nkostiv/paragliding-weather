@@ -1,0 +1,261 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [16.5504, 49.427]
+      },
+      "properties": {
+        "name": "Býkovice",
+        "wind_range": {
+          "from_deg": 340,
+          "to_deg": 60,
+          "crosses_zero": true
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/80/bykovice"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [18.1022, 49.4479]
+      },
+      "properties": {
+        "name": "Vidče",
+        "wind_range": {
+          "from_deg": 150,
+          "to_deg": 240,
+          "crosses_zero": false
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/36/vidce"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [15.278, 49.6035]
+      },
+      "properties": {
+        "name": "Podivice",
+        "wind_range": {
+          "from_deg": 230,
+          "to_deg": 300,
+          "crosses_zero": false
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/1780/podivice"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [16.9095, 48.9409]
+      },
+      "properties": {
+        "name": "Kobylská skála",
+        "wind_range": {
+          "from_deg": 340,
+          "to_deg": 30,
+          "crosses_zero": true
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/218/kobylska-skala"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [14.323, 50.3383]
+      },
+      "properties": {
+        "name": "Jeviněves",
+        "wind_range": {
+          "from_deg": 90,
+          "to_deg": 160,
+          "crosses_zero": false
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/56/jevineves"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [18.1715, 49.5896]
+      },
+      "properties": {
+        "name": "Vlčovice",
+        "wind_range": {
+          "from_deg": 350,
+          "to_deg": 60,
+          "crosses_zero": true
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/37/vlcovice"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [14.8058, 49.4784]
+      },
+      "properties": {
+        "name": "Pohnánec",
+        "wind_range": {
+          "from_deg": 230,
+          "to_deg": 300,
+          "crosses_zero": false
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/234/pohnanec"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [13.9933, 50.1236]
+      },
+      "properties": {
+        "name": "důl Tuchlovice",
+        "wind_range": {
+          "from_deg": 60,
+          "to_deg": 270,
+          "crosses_zero": false
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/281/dul-tuchlovice"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [14.5401, 48.9785]
+      },
+      "properties": {
+        "name": "Dubičné",
+        "wind_range": {
+          "from_deg": 260,
+          "to_deg": 330,
+          "crosses_zero": false
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/24/dubicne"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [17.0717, 50.3264]
+      },
+      "properties": {
+        "name": "Lánský vrch",
+        "wind_range": {
+          "from_deg": 45,
+          "to_deg": 210,
+          "crosses_zero": false
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/1698/lansky-vrch"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [17.3372, 49.2488]
+      },
+      "properties": {
+        "name": "Zdounky - Olšina",
+        "wind_range": {
+          "from_deg": 135,
+          "to_deg": 225,
+          "crosses_zero": false
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/1804/zdounky-olsina"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [18.2008, 49.6331]
+      },
+      "properties": {
+        "name": "Hájov",
+        "wind_range": {
+          "from_deg": 250,
+          "to_deg": 340,
+          "crosses_zero": false
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/82/hajov"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [18.3319, 49.6301]
+      },
+      "properties": {
+        "name": "Palkovice",
+        "wind_range": {
+          "from_deg": 330,
+          "to_deg": 20,
+          "crosses_zero": true
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/31/palkovice"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [17.8713, 49.0415]
+      },
+      "properties": {
+        "name": "Jahodiska",
+        "wind_range": {
+          "from_deg": 250,
+          "to_deg": 20,
+          "crosses_zero": true
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/245/jahodiska"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [17.3663, 49.8844]
+      },
+      "properties": {
+        "name": "Rýžoviště u Rýmařova",
+        "wind_range": {
+          "from_deg": 260,
+          "to_deg": 300,
+          "crosses_zero": false
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/212/ryzoviste-u-rymarova"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [16.82, 49.9996]
+      },
+      "properties": {
+        "name": "Jakubovice",
+        "wind_range": {
+          "from_deg": 100,
+          "to_deg": 150,
+          "crosses_zero": false
+        },
+        "website": "https://www.paragliding-mapa.cz/en/take-off/detail/42/jakubovice"
+      }
+    }
+  ]
+}
