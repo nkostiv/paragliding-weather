@@ -292,7 +292,7 @@ html, body {
 </div>
 
 <div id="header">
-    <h1>🪂 CZ Paragliding Weather</h1>
+    <h1 id="appTitle"></h1>
     <div class="control-group">
         <span id="loadingSpinner"></span>
         <label for="unitToggle">Units:</label>
@@ -330,37 +330,36 @@ html, body {
     <a id="detailsLink" href="#" target="_blank" class="details-link">📍 View on Paragliding Map</a>
 </div>
 
+<!-- Load configuration first -->
+<script src="config.js"></script>
+
+<!-- Optional: Load local config overrides (not committed to repo) -->
+<!-- <script src="config.local.js"></script> -->
+
+<!-- Load Leaflet and Windy -->
 <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
 <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 
 <script>
 // ============================================================================
-// Configuration & Constants
-// ============================================================================
-
-const WIND_THRESHOLDS = {
-    ms: { min: 2, max: 8, maxGust: 11 },
-    kmh: { min: 7.2, max: 28.8, maxGust: 39.6 },
-    knots: { min: 3.9, max: 15.5, maxGust: 21.4 },
-    mph: { min: 4.5, max: 17.9, maxGust: 24.6 }
-};
-
-const UNIT_SYSTEM = {
-    ms: { speed: 'm/s', altitude: 'm', label: 'm/s, m' },
-    kmh: { speed: 'km/h', altitude: 'm', label: 'km/h, m' },
-    knots: { speed: 'knots', altitude: 'ft', label: 'knots, ft' },
-    mph: { speed: 'mph', altitude: 'ft', label: 'mph, ft' }
-};
-
-// ============================================================================
-// State Management
+// Application State
 // ============================================================================
 
 let state = {
     sites: [],
     markers: new Map(),
-    currentUnit: 'ms',
+    currentUnit: CONFIG.app.defaultUnit,
     mapInstance: null
+};
+
+// ============================================================================
+// Utility: Logging (respects CONFIG.app.debug)
+// ============================================================================
+
+const log = {
+    info: (msg, data) => CONFIG.app.debug && console.log(`[INFO] ${msg}`, data || ''),
+    warn: (msg, data) => console.warn(`[WARN] ${msg}`, data || ''),
+    error: (msg, data) => console.error(`[ERROR] ${msg}`, data || '')
 };
 
 // ============================================================================
@@ -393,6 +392,10 @@ const UnitConverter = {
 // Wind Direction Utilities
 // ============================================================================
 
+/**
+ * Check if a wind direction falls within a given range
+ * Handles ranges that cross 0° (e.g., 340° - 60°)
+ */
 function isDirectionInRange(dir, min, max) {
     if (min <= max) {
         return dir >= min && dir <= max;
@@ -400,6 +403,11 @@ function isDirectionInRange(dir, min, max) {
     return dir >= min || dir <= max;
 }
 
+/**
+ * Convert wind direction in degrees to cardinal direction
+ * @param {number} deg - Degrees (0-360)
+ * @returns {string} Cardinal direction (N, NNE, NE, etc.)
+ */
 function getCardinalDirection(deg) {
     const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
     const index = Math.round(deg / 22.5) % 16;
@@ -410,8 +418,17 @@ function getCardinalDirection(deg) {
 // Flyability Assessment
 // ============================================================================
 
+/**
+ * Assess flyability based on current weather conditions
+ * @param {number} windDir - Wind direction in degrees
+ * @param {number} windSpeed - Wind speed in m/s
+ * @param {number} gust - Gust speed in m/s
+ * @param {number} siteWindMin - Site's minimum acceptable wind direction
+ * @param {number} siteWindMax - Site's maximum acceptable wind direction
+ * @returns {object} Assessment object with status and conditions
+ */
 function assessFlyability(windDir, windSpeed, gust, siteWindMin, siteWindMax) {
-    const thresholds = WIND_THRESHOLDS[state.currentUnit];
+    const thresholds = CONFIG.windThresholds[state.currentUnit];
     
     const directionOK = isDirectionInRange(windDir, siteWindMin, siteWindMax);
     const speedOK = windSpeed >= thresholds.min && windSpeed <= thresholds.max;
@@ -437,6 +454,10 @@ function assessFlyability(windDir, windSpeed, gust, siteWindMin, siteWindMax) {
 // Marker Icon Generation
 // ============================================================================
 
+/**
+ * Create a custom Leaflet icon for a paragliding site
+ * Shows wind sector and flyability status
+ */
 function createMarkerIcon(windDir, flyable, siteWindMin, siteWindMax) {
     // Determine wind sector gradient
     let start = siteWindMin;
@@ -516,33 +537,39 @@ function createMarkerIcon(windDir, flyable, siteWindMin, siteWindMax) {
 // Weather Data Fetching
 // ============================================================================
 
+/**
+ * Fetch current weather data from Open-Meteo API
+ * @param {object} site - GeoJSON feature representing a paragliding site
+ * @returns {Promise<object|null>} Weather data or null if fetch fails
+ */
 async function fetchWeatherData(site) {
     try {
-        const url = new URL('https://api.open-meteo.com/v1/forecast');
+        const url = new URL(CONFIG.weather.baseUrl);
         url.searchParams.set('latitude', site.geometry.coordinates[1]);
         url.searchParams.set('longitude', site.geometry.coordinates[0]);
-        url.searchParams.set('current', 'wind_direction_10m,wind_speed_10m,wind_gusts_10m');
+        url.searchParams.set('current', CONFIG.weather.currentParams);
         
-        const response = await fetch(url);
+        const response = await fetch(url, { timeout: CONFIG.weather.timeout });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
         const data = await response.json();
         
         if (!data.current) {
-            console.warn(`Invalid API response for ${site.properties.name}`);
+            log.warn(`Invalid API response for ${site.properties.name}`);
             return null;
         }
         
         const { wind_direction_10m: windDir, wind_speed_10m: windSpeed, wind_gusts_10m: gust } = data.current;
         
         if (windDir == null || windSpeed == null || gust == null) {
-            console.warn(`Missing wind data for ${site.properties.name}`);
+            log.warn(`Missing wind data for ${site.properties.name}`);
             return null;
         }
         
+        log.info(`Weather data fetched for ${site.properties.name}`, { windDir, windSpeed, gust });
         return { windDir, windSpeed, gust };
     } catch (error) {
-        console.error(`Weather fetch error for ${site.properties.name}:`, error);
+        log.error(`Weather fetch error for ${site.properties.name}`, error);
         return null;
     }
 }
@@ -551,40 +578,44 @@ async function fetchWeatherData(site) {
 // Map and Marker Management
 // ============================================================================
 
+/**
+ * Load all paragliding sites from sites.json
+ */
 async function loadSites() {
     document.getElementById('loadingSpinner').style.display = 'block';
     
     try {
-        const response = await fetch('sites.json');
-        if (!response.ok) throw new Error(`Failed to load sites.json: ${response.status}`);
+        const response = await fetch(CONFIG.sites.dataFile);
+        if (!response.ok) throw new Error(`Failed to load ${CONFIG.sites.dataFile}: ${response.status}`);
         
         const geojson = await response.json();
         state.sites = geojson.features;
+        
+        log.info(`Loaded ${state.sites.length} sites from ${CONFIG.sites.dataFile}`);
         
         // Load weather for all sites
         for (const site of state.sites) {
             addSiteMarker(site);
         }
     } catch (error) {
-        console.error('Error loading sites:', error);
-        alert('Failed to load paragliding sites. Please refresh the page.');
+        log.error('Error loading sites', error);
+        alert(`Failed to load paragliding sites from ${CONFIG.sites.dataFile}. Please refresh the page.`);
     } finally {
         document.getElementById('loadingSpinner').style.display = 'none';
     }
 }
 
+/**
+ * Fetch weather data and add marker for a single site
+ */
 async function addSiteMarker(site) {
     const weatherData = await fetchWeatherData(site);
-    
-    if (!weatherData) {
-        // Still add marker even if weather fetch fails
-        addMarkerToMap(site, null);
-        return;
-    }
-    
     addMarkerToMap(site, weatherData);
 }
 
+/**
+ * Add a marker to the map for a paragliding site
+ */
 function addMarkerToMap(site, weatherData) {
     const { coordinates } = site.geometry;
     const { name } = site.properties;
@@ -617,9 +648,12 @@ function addMarkerToMap(site, weatherData) {
 // Info Panel Management
 // ============================================================================
 
+/**
+ * Display detailed information about a paragliding site
+ */
 function showInfoPanel(site, weatherData) {
     const { name } = site.properties;
-    const { from_deg: windMin, to_deg: windMax, crosses_zero } = site.properties.wind_range;
+    const { from_deg: windMin, to_deg: windMax } = site.properties.wind_range;
     const { website } = site.properties;
     
     const panel = document.getElementById('infoPanel');
@@ -637,12 +671,13 @@ function showInfoPanel(site, weatherData) {
         document.getElementById('detailsLink').href = website;
         panel.classList.add('visible');
         document.getElementById('closePanel').classList.add('visible');
+        log.info(`Displayed info panel for ${name} (no weather data)`);
         return;
     }
     
     const { windDir, windSpeed, gust } = weatherData;
     const assessment = assessFlyability(windDir, windSpeed, gust, windMin, windMax);
-    const units = UNIT_SYSTEM[state.currentUnit];
+    const units = CONFIG.unitSystems[state.currentUnit];
     
     // Convert units
     const convertedSpeed = UnitConverter.convertSpeed(windSpeed, state.currentUnit);
@@ -672,8 +707,13 @@ function showInfoPanel(site, weatherData) {
     // Show panel
     panel.classList.add('visible');
     document.getElementById('closePanel').classList.add('visible');
+    
+    log.info(`Displayed info panel for ${name}`, assessment);
 }
 
+/**
+ * Hide the info panel
+ */
 function closeInfoPanel() {
     const panel = document.getElementById('infoPanel');
     panel.classList.remove('visible');
@@ -686,6 +726,7 @@ function closeInfoPanel() {
 
 document.getElementById('unitToggle').addEventListener('change', (e) => {
     state.currentUnit = e.target.value;
+    log.info(`Unit system changed to: ${state.currentUnit}`);
     closeInfoPanel();
 });
 
@@ -699,22 +740,28 @@ document.getElementById('map').addEventListener('click', (e) => {
 });
 
 // ============================================================================
-// Map Initialization
+// Application Initialization
 // ============================================================================
 
-const windyOptions = {
-    key: 'kmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh',
-    lat: 49.8,
-    lon: 15.4,
-    zoom: 8,
-    overlay: 'wind',
-    level: 'surface'
-};
+/**
+ * Initialize the application
+ */
+function initializeApp() {
+    // Set app title
+    document.getElementById('appTitle').textContent = CONFIG.app.title;
+    
+    // Initialize Windy map
+    windyInit(CONFIG.windy, (windyAPI) => {
+        state.mapInstance = windyAPI.map;
+        log.info('Windy API initialized');
+        loadSites();
+    });
+    
+    log.info('Application initialized with config:', CONFIG);
+}
 
-windyInit(windyOptions, (windyAPI) => {
-    state.mapInstance = windyAPI.map;
-    loadSites();
-});
+// Start application when DOM is ready
+document.addEventListener('DOMContentLoaded', initializeApp);
 </script>
 
 </body>
