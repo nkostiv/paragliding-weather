@@ -157,4 +157,15 @@ function showInfoPanel(site, windDir, windSpeed, gust, flyable) {
     panel.style.display = "block";
 
     panel.innerHTML =
-        "<strong>" + site.name +
+        "<strong>" + site.name + "</strong><br>" +
+        "Accepted: " + site.windMin + "° – " + site.windMax + "°<br><br>" +
+        (flyable ? "🟢 FLYABLE" : "🔴 NOT FLYABLE") + "<br>" +
+        "Direction: " + windDir + "°<br>" +
+        "Speed: " + windSpeed + " m/s<br>" +
+        "Gust: " + gust + " m/s";
+}
+
+</script>
+
+</body>
+</html>
