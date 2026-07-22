@@ -2,55 +2,707 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>CZ Paragliding Dashboard</title>
+<title>CZ Paragliding Weather Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"/>
 
 <style>
+* {
+    box-sizing: border-box;
+}
+
 html, body {
     margin: 0;
     padding: 0;
     height: 100%;
-    font-family: Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: #f5f5f5;
 }
 
-#windy {
+#mapContainer {
     width: 100%;
     height: 100vh;
+    position: relative;
 }
 
+#map {
+    width: 100%;
+    height: 100%;
+}
+
+/* Header Controls */
+#header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 12px 16px;
+    z-index: 999;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+#header h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.control-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.control-group label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    white-space: nowrap;
+}
+
+#unitToggle {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+#unitToggle:hover {
+    background: #f9f9f9;
+    border-color: #999;
+}
+
+#unitToggle:active {
+    transform: scale(0.98);
+}
+
+#loadingSpinner {
+    display: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e0e0e0;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Info Panel - Bottom */
 #infoPanel {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    background: rgba(0,0,0,0.85);
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 30, 0.95) 100%);
     color: white;
-    padding: 12px;
-    font-size: 14px;
-    display: none;
+    padding: 16px;
     z-index: 1000;
+    display: none;
+    max-height: 50vh;
+    overflow-y: auto;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-#infoPanel strong {
+#infoPanel.visible {
+    display: block;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+#infoPanel h2 {
+    margin: 0 0 12px 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.info-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.info-item {
+    background: rgba(255, 255, 255, 0.08);
+    padding: 10px 12px;
+    border-radius: 6px;
+    border-left: 3px solid #2563eb;
+}
+
+.info-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #aaa;
+    font-weight: 600;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
     font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.flyability-status {
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    font-size: 16px;
+    text-align: center;
+}
+
+.flyability-status.flyable {
+    background: rgba(34, 197, 94, 0.2);
+    border: 1px solid rgba(34, 197, 94, 0.5);
+    color: #86efac;
+}
+
+.flyability-status.marginal {
+    background: rgba(234, 179, 8, 0.2);
+    border: 1px solid rgba(234, 179, 8, 0.5);
+    color: #fde047;
+}
+
+.flyability-status.unflyable {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #fca5a5;
+}
+
+.details-link {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 10px 16px;
+    background: #2563eb;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.details-link:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.details-link:active {
+    transform: translateY(0);
+}
+
+#closePanel {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.2s ease;
+    display: none;
+}
+
+#closePanel.visible {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#closePanel:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    #header {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    #header h1 {
+        font-size: 18px;
+    }
+
+    .control-group {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .info-row {
+        grid-template-columns: 1fr;
+    }
+
+    #infoPanel {
+        max-height: 60vh;
+    }
+}
+
+/* Leaflet customizations */
+.leaflet-container {
+    font-family: inherit;
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 </style>
 </head>
 
 <body>
 
-<div id="windy"></div>
-<div id="infoPanel"></div>
+<div id="mapContainer">
+    <div id="map"></div>
+</div>
+
+<div id="header">
+    <h1>🪂 CZ Paragliding Weather</h1>
+    <div class="control-group">
+        <span id="loadingSpinner"></span>
+        <label for="unitToggle">Units:</label>
+        <select id="unitToggle">
+            <option value="ms">m/s, m</option>
+            <option value="kmh">km/h, m</option>
+            <option value="knots">knots, ft</option>
+            <option value="mph">mph, ft</option>
+        </select>
+    </div>
+</div>
+
+<div id="infoPanel">
+    <button id="closePanel">✕</button>
+    <h2 id="siteName"></h2>
+    <div id="flyabilityStatus" class="flyability-status"></div>
+    <div class="info-row">
+        <div class="info-item">
+            <div class="info-label">Wind Direction</div>
+            <div class="info-value" id="windDirection">-</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Wind Speed</div>
+            <div class="info-value" id="windSpeed">-</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Gust Speed</div>
+            <div class="info-value" id="gustSpeed">-</div>
+        </div>
+        <div class="info-item">
+            <div class="info-label">Site Wind Range</div>
+            <div class="info-value" id="siteWindRange">-</div>
+        </div>
+    </div>
+    <a id="detailsLink" href="#" target="_blank" class="details-link">📍 View on Paragliding Map</a>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
 <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 
 <script>
+// ============================================================================
+// Configuration & Constants
+// ============================================================================
 
-const options = {
+const WIND_THRESHOLDS = {
+    ms: { min: 2, max: 8, maxGust: 11 },
+    kmh: { min: 7.2, max: 28.8, maxGust: 39.6 },
+    knots: { min: 3.9, max: 15.5, maxGust: 21.4 },
+    mph: { min: 4.5, max: 17.9, maxGust: 24.6 }
+};
+
+const UNIT_SYSTEM = {
+    ms: { speed: 'm/s', altitude: 'm', label: 'm/s, m' },
+    kmh: { speed: 'km/h', altitude: 'm', label: 'km/h, m' },
+    knots: { speed: 'knots', altitude: 'ft', label: 'knots, ft' },
+    mph: { speed: 'mph', altitude: 'ft', label: 'mph, ft' }
+};
+
+// ============================================================================
+// State Management
+// ============================================================================
+
+let state = {
+    sites: [],
+    markers: new Map(),
+    currentUnit: 'ms',
+    mapInstance: null
+};
+
+// ============================================================================
+// Unit Conversion Utilities
+// ============================================================================
+
+const UnitConverter = {
+    msToKmh: (ms) => (ms * 3.6).toFixed(1),
+    msToKnots: (ms) => (ms * 1.944).toFixed(1),
+    msToMph: (ms) => (ms * 2.237).toFixed(1),
+    
+    mToFt: (m) => (m * 3.28084).toFixed(0),
+    
+    convertSpeed: (ms, unit) => {
+        switch (unit) {
+            case 'kmh': return UnitConverter.msToKmh(ms);
+            case 'knots': return UnitConverter.msToKnots(ms);
+            case 'mph': return UnitConverter.msToMph(ms);
+            default: return ms.toFixed(1);
+        }
+    },
+    
+    convertAltitude: (m, unit) => {
+        if (unit === 'ft') return UnitConverter.mToFt(m);
+        return m;
+    }
+};
+
+// ============================================================================
+// Wind Direction Utilities
+// ============================================================================
+
+function isDirectionInRange(dir, min, max) {
+    if (min <= max) {
+        return dir >= min && dir <= max;
+    }
+    return dir >= min || dir <= max;
+}
+
+function getCardinalDirection(deg) {
+    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    const index = Math.round(deg / 22.5) % 16;
+    return directions[index];
+}
+
+// ============================================================================
+// Flyability Assessment
+// ============================================================================
+
+function assessFlyability(windDir, windSpeed, gust, siteWindMin, siteWindMax) {
+    const thresholds = WIND_THRESHOLDS[state.currentUnit];
+    
+    const directionOK = isDirectionInRange(windDir, siteWindMin, siteWindMax);
+    const speedOK = windSpeed >= thresholds.min && windSpeed <= thresholds.max;
+    const gustOK = gust <= thresholds.maxGust;
+    
+    let status = 'flyable';
+    if (!directionOK || gust > thresholds.maxGust) {
+        status = 'unflyable';
+    } else if (windSpeed < thresholds.min || windSpeed > thresholds.max || (windSpeed > thresholds.max * 0.9)) {
+        status = 'marginal';
+    }
+    
+    return {
+        status,
+        directionOK,
+        speedOK,
+        gustOK,
+        flyable: status === 'flyable'
+    };
+}
+
+// ============================================================================
+// Marker Icon Generation
+// ============================================================================
+
+function createMarkerIcon(windDir, flyable, siteWindMin, siteWindMax) {
+    // Determine wind sector gradient
+    let start = siteWindMin;
+    let end = siteWindMax;
+    let sectorStyle;
+    
+    if (start <= end) {
+        sectorStyle = `conic-gradient(
+            transparent 0deg ${start}deg,
+            rgba(34, 197, 94, 0.6) ${start}deg ${end}deg,
+            transparent ${end}deg 360deg
+        )`;
+    } else {
+        sectorStyle = `conic-gradient(
+            rgba(34, 197, 94, 0.6) 0deg ${end}deg,
+            transparent ${end}deg ${start}deg,
+            rgba(34, 197, 94, 0.6) ${start}deg 360deg
+        )`;
+    }
+    
+    // Determine border color based on flyability
+    const borderColor = flyable ? '#22c55e' : '#ef4444';
+    
+    const iconHTML = `
+        <div style="position: relative; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
+            <!-- Background circle -->
+            <div style="
+                position: absolute;
+                width: 64px;
+                height: 64px;
+                border-radius: 50%;
+                background: ${borderColor};
+                opacity: 0.15;
+            "></div>
+            
+            <!-- Border circle -->
+            <div style="
+                position: absolute;
+                width: 64px;
+                height: 64px;
+                border-radius: 50%;
+                border: 3px solid ${borderColor};
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            "></div>
+            
+            <!-- Wind sector -->
+            <div style="
+                position: absolute;
+                width: 60px;
+                height: 60px;
+                border-radius: 50%;
+                background: ${sectorStyle};
+                opacity: 0.5;
+            "></div>
+            
+            <!-- Status indicator -->
+            <div style="
+                position: relative;
+                z-index: 10;
+                font-size: 28px;
+            ">
+                ${flyable ? '✓' : '✗'}
+            </div>
+        </div>
+    `;
+    
+    return L.divIcon({
+        className: '',
+        html: iconHTML,
+        iconSize: [64, 64],
+        iconAnchor: [32, 32],
+        popupAnchor: [0, -32]
+    });
+}
+
+// ============================================================================
+// Weather Data Fetching
+// ============================================================================
+
+async function fetchWeatherData(site) {
+    try {
+        const url = new URL('https://api.open-meteo.com/v1/forecast');
+        url.searchParams.set('latitude', site.geometry.coordinates[1]);
+        url.searchParams.set('longitude', site.geometry.coordinates[0]);
+        url.searchParams.set('current', 'wind_direction_10m,wind_speed_10m,wind_gusts_10m');
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        
+        if (!data.current) {
+            console.warn(`Invalid API response for ${site.properties.name}`);
+            return null;
+        }
+        
+        const { wind_direction_10m: windDir, wind_speed_10m: windSpeed, wind_gusts_10m: gust } = data.current;
+        
+        if (windDir == null || windSpeed == null || gust == null) {
+            console.warn(`Missing wind data for ${site.properties.name}`);
+            return null;
+        }
+        
+        return { windDir, windSpeed, gust };
+    } catch (error) {
+        console.error(`Weather fetch error for ${site.properties.name}:`, error);
+        return null;
+    }
+}
+
+// ============================================================================
+// Map and Marker Management
+// ============================================================================
+
+async function loadSites() {
+    document.getElementById('loadingSpinner').style.display = 'block';
+    
+    try {
+        const response = await fetch('sites.json');
+        if (!response.ok) throw new Error(`Failed to load sites.json: ${response.status}`);
+        
+        const geojson = await response.json();
+        state.sites = geojson.features;
+        
+        // Load weather for all sites
+        for (const site of state.sites) {
+            addSiteMarker(site);
+        }
+    } catch (error) {
+        console.error('Error loading sites:', error);
+        alert('Failed to load paragliding sites. Please refresh the page.');
+    } finally {
+        document.getElementById('loadingSpinner').style.display = 'none';
+    }
+}
+
+async function addSiteMarker(site) {
+    const weatherData = await fetchWeatherData(site);
+    
+    if (!weatherData) {
+        // Still add marker even if weather fetch fails
+        addMarkerToMap(site, null);
+        return;
+    }
+    
+    addMarkerToMap(site, weatherData);
+}
+
+function addMarkerToMap(site, weatherData) {
+    const { coordinates } = site.geometry;
+    const { name } = site.properties;
+    const { from_deg: windMin, to_deg: windMax } = site.properties.wind_range;
+    
+    let flyable = false;
+    let windDir = null;
+    let windSpeed = null;
+    let gust = null;
+    
+    if (weatherData) {
+        windDir = weatherData.windDir;
+        windSpeed = weatherData.windSpeed;
+        gust = weatherData.gust;
+        
+        const assessment = assessFlyability(windDir, windSpeed, gust, windMin, windMax);
+        flyable = assessment.flyable;
+    }
+    
+    const icon = createMarkerIcon(windDir || 0, flyable, windMin, windMax);
+    
+    const marker = L.marker([coordinates[1], coordinates[0]], { icon })
+        .addTo(state.mapInstance)
+        .on('click', () => showInfoPanel(site, weatherData));
+    
+    state.markers.set(name, { marker, site, weatherData });
+}
+
+// ============================================================================
+// Info Panel Management
+// ============================================================================
+
+function showInfoPanel(site, weatherData) {
+    const { name } = site.properties;
+    const { from_deg: windMin, to_deg: windMax, crosses_zero } = site.properties.wind_range;
+    const { website } = site.properties;
+    
+    const panel = document.getElementById('infoPanel');
+    const statusDiv = document.getElementById('flyabilityStatus');
+    
+    if (!weatherData) {
+        // Show panel with data unavailable
+        document.getElementById('siteName').textContent = name;
+        statusDiv.textContent = '⚠️ Weather data unavailable';
+        statusDiv.className = 'flyability-status marginal';
+        document.getElementById('windDirection').textContent = '—';
+        document.getElementById('windSpeed').textContent = '—';
+        document.getElementById('gustSpeed').textContent = '—';
+        document.getElementById('siteWindRange').textContent = `${windMin}° – ${windMax}°`;
+        document.getElementById('detailsLink').href = website;
+        panel.classList.add('visible');
+        document.getElementById('closePanel').classList.add('visible');
+        return;
+    }
+    
+    const { windDir, windSpeed, gust } = weatherData;
+    const assessment = assessFlyability(windDir, windSpeed, gust, windMin, windMax);
+    const units = UNIT_SYSTEM[state.currentUnit];
+    
+    // Convert units
+    const convertedSpeed = UnitConverter.convertSpeed(windSpeed, state.currentUnit);
+    const convertedGust = UnitConverter.convertSpeed(gust, state.currentUnit);
+    
+    // Update panel content
+    document.getElementById('siteName').textContent = name;
+    
+    // Flyability status
+    const statusText = {
+        flyable: `✅ FLYABLE - Perfect conditions!`,
+        marginal: `⚠️ MARGINAL - Use caution`,
+        unflyable: `❌ UNFLYABLE - Too dangerous`
+    };
+    statusDiv.textContent = statusText[assessment.status];
+    statusDiv.className = `flyability-status ${assessment.status}`;
+    
+    // Wind info
+    document.getElementById('windDirection').textContent = `${windDir}° ${getCardinalDirection(windDir)}`;
+    document.getElementById('windSpeed').textContent = `${convertedSpeed} ${units.speed}`;
+    document.getElementById('gustSpeed').textContent = `${convertedGust} ${units.speed}`;
+    document.getElementById('siteWindRange').textContent = `${windMin}° – ${windMax}°`;
+    
+    // Details link
+    document.getElementById('detailsLink').href = website;
+    
+    // Show panel
+    panel.classList.add('visible');
+    document.getElementById('closePanel').classList.add('visible');
+}
+
+function closeInfoPanel() {
+    const panel = document.getElementById('infoPanel');
+    panel.classList.remove('visible');
+    document.getElementById('closePanel').classList.remove('visible');
+}
+
+// ============================================================================
+// Event Listeners
+// ============================================================================
+
+document.getElementById('unitToggle').addEventListener('change', (e) => {
+    state.currentUnit = e.target.value;
+    closeInfoPanel();
+});
+
+document.getElementById('closePanel').addEventListener('click', closeInfoPanel);
+
+// Close panel when clicking outside (on map)
+document.getElementById('map').addEventListener('click', (e) => {
+    if (e.target.closest('.leaflet-marker-icon') === null) {
+        closeInfoPanel();
+    }
+});
+
+// ============================================================================
+// Map Initialization
+// ============================================================================
+
+const windyOptions = {
     key: 'kmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh',
     lat: 49.8,
     lon: 15.4,
@@ -59,153 +711,10 @@ const options = {
     level: 'surface'
 };
 
-const MIN_WIND = 2;
-const MAX_WIND = 8;
-const MAX_GUST = 11;
-
-const sites = [
-    { name: "Site 1", lat: 48.238592, lon: 19.306783, windMin: 225, windMax: 270 },
-    { name: "Site 2", lat: 49.4479, lon: 18.1022, windMin: 150, windMax: 240 },
-    { name: "Site 3", lat: 49.427, lon: 16.5504, windMin: 340, windMax: 60 },
-    { name: "Site 4", lat: 49.5896, lon: 18.1715, windMin: 350, windMax: 60 }
-];
-
-function isDirectionInRange(dir, min, max) {
-    if (min <= max) return dir >= min && dir <= max;
-    return dir >= min || dir <= max;
-}
-
-windyInit(options, windyAPI => {
-    const { map } = windyAPI;
-    loadAllSites(map);
+windyInit(windyOptions, (windyAPI) => {
+    state.mapInstance = windyAPI.map;
+    loadSites();
 });
-
-function loadAllSites(map) {
-    sites.forEach(site => checkWind(site, map));
-}
-
-function checkWind(site, map) {
-
-    const url =
-        "https://api.open-meteo.com/v1/forecast?" +
-        "latitude=" + site.lat +
-        "&longitude=" + site.lon +
-        "&current=wind_direction_10m,wind_speed_10m,wind_gusts_10m";
-
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-
-            if (!data || !data.current) {
-                console.warn("Invalid API response for", site.name);
-                return;
-            }
-
-            const windDir = data.current.wind_direction_10m;
-            const windSpeed = data.current.wind_speed_10m;
-            const gust = data.current.wind_gusts_10m;
-
-            if (windDir == null || windSpeed == null || gust == null) {
-                console.warn("Missing wind data for", site.name);
-                return;
-            }
-
-            // ✅ Sector calculation
-            let start = site.windMin;
-            let end = site.windMax;
-            let sectorStyle;
-
-            if (start <= end) {
-                sectorStyle = `conic-gradient(
-                    transparent 0deg ${start}deg,
-                    yellow ${start}deg ${end}deg,
-                    transparent ${end}deg 360deg
-                )`;
-            } else {
-                sectorStyle = `conic-gradient(
-                    yellow 0deg ${end}deg,
-                    transparent ${end}deg ${start}deg,
-                    yellow ${start}deg 360deg
-                )`;
-            }
-
-            const directionOK = isDirectionInRange(windDir, site.windMin, site.windMax);
-            const speedOK = windSpeed >= MIN_WIND && windSpeed <= MAX_WIND;
-            const gustOK = gust <= MAX_GUST;
-            const flyable = directionOK && speedOK && gustOK;
-
-            const arrowHTML = directionOK
-                ? ''
-                : `<div style="
-                        position:absolute;
-                        width:60px;
-                        height:60px;
-                        text-align:center;
-                        line-height:60px;
-                        font-size:28px;
-                        color:red;
-                        transform: rotate(${windDir}deg);
-                    ">▲</div>`;
-
-            const iconHTML = `
-            <div style="position:relative;width:60px;height:60px;">
-                <div style="
-                    width:60px;
-                    height:60px;
-                    border-radius:50%;
-                    border:2px solid ${flyable ? 'lime' : 'white'};
-                    background:rgba(0,0,0,0.4);
-                    position:absolute;
-                "></div>
-
-                <div style="
-                    width:60px;
-                    height:60px;
-                    border-radius:50%;
-                    position:absolute;
-                    background:${sectorStyle};
-                    opacity:0.6;
-                "></div>
-
-                ${arrowHTML}
-            </div>`;
-
-            const customIcon = L.divIcon({
-                className: '',
-                html: iconHTML,
-                iconSize: [60, 60],
-                iconAnchor: [30, 30]
-            });
-
-            const marker = L.marker([site.lat, site.lon], {
-                icon: customIcon
-            }).addTo(map);
-
-            marker.on("click", () => {
-                showInfoPanel(site, windDir, windSpeed, gust, flyable);
-                map.setView([site.lat, site.lon], 10);
-            });
-
-        })
-        .catch(error => {
-            console.error("Wind fetch error:", error);
-        });
-}
-
-function showInfoPanel(site, windDir, windSpeed, gust, flyable) {
-
-    const panel = document.getElementById("infoPanel");
-    panel.style.display = "block";
-
-    panel.innerHTML =
-        "<strong>" + site.name + "</strong><br>" +
-        "Accepted: " + site.windMin + "° – " + site.windMax + "°<br><br>" +
-        (flyable ? "🟢 FLYABLE" : "🔴 NOT FLYABLE") + "<br>" +
-        "Direction: " + windDir + "°<br>" +
-        "Speed: " + windSpeed + " m/s<br>" +
-        "Gust: " + gust + " m/s";
-}
-
 </script>
 
 </body>
