@@ -21,14 +21,6 @@ html, body {
     height: 100vh;
 }
 
-/* ✅ Wind arrow marker */
-.wind-marker {
-    font-size: 26px;
-    text-align: center;
-    transform-origin: center;
-}
-
-/* ✅ Mobile bottom info panel */
 #infoPanel {
     position: fixed;
     bottom: 0;
@@ -44,54 +36,6 @@ html, body {
 
 #infoPanel strong {
     font-size: 16px;
-}
-
-.site-marker {
-    position: relative;
-    width: 60px;
-    height: 60px;
-}
-
-.site-circle {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: 2px solid white;
-    background: rgba(0,0,0,0.4);
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-
-.wind-sector {
-    position: absolute;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: conic-gradient(
-        yellow VAR_START,
-        yellow VAR_END,
-        transparent VAR_END
-    );
-    opacity: 0.6;
-}
-
-.wind-arrow {
-    position: absolute;
-    width: 60px;
-    height: 60px;
-    text-align: center;
-    line-height: 60px;
-    font-size: 28px;
-    color: red;
-    transform-origin: center;
-}
-
-/* ✅ Mobile adjustments */
-@media (max-width: 768px) {
-    .wind-marker {
-        font-size: 32px;
-    }
 }
 </style>
 </head>
@@ -132,11 +76,8 @@ function isDirectionInRange(dir, min, max) {
 }
 
 windyInit(options, windyAPI => {
-
     const { map } = windyAPI;
-
     loadAllSites(map);
-
 });
 
 function loadAllSites(map) {
@@ -155,46 +96,95 @@ function checkWind(site, map) {
         .then(response => response.json())
         .then(data => {
 
+            if (!data || !data.current) {
+                console.warn("Invalid API response for", site.name);
+                return;
+            }
+
             const windDir = data.current.wind_direction_10m;
             const windSpeed = data.current.wind_speed_10m;
             const gust = data.current.wind_gusts_10m;
 
+            if (windDir == null || windSpeed == null || gust == null) {
+                console.warn("Missing wind data for", site.name);
+                return;
+            }
+
+            // ✅ Sector calculation
+            let start = site.windMin;
+            let end = site.windMax;
+            let sectorStyle;
+
+            if (start <= end) {
+                sectorStyle = `conic-gradient(
+                    transparent 0deg ${start}deg,
+                    yellow ${start}deg ${end}deg,
+                    transparent ${end}deg 360deg
+                )`;
+            } else {
+                sectorStyle = `conic-gradient(
+                    yellow 0deg ${end}deg,
+                    transparent ${end}deg ${start}deg,
+                    yellow ${start}deg 360deg
+                )`;
+            }
+
             const directionOK = isDirectionInRange(windDir, site.windMin, site.windMax);
             const speedOK = windSpeed >= MIN_WIND && windSpeed <= MAX_WIND;
             const gustOK = gust <= MAX_GUST;
-
             const flyable = directionOK && speedOK && gustOK;
-            // ✅ Only show red arrow if direction is NOT acceptable
-const arrowHTML = directionOK
-    ? ''
-    : `<div class="wind-arrow"
-           style="transform: rotate(${windDir}deg);">
-           ▲
-       </div>`;
 
-const iconHTML = `
-<div class="site-marker">
-    <div class="site-circle"></div>
-    <div class="wind-sector" style="background:${sectorStyle};"></div>
-    ${arrowHTML}
-</div>
-`;
+            const arrowHTML = directionOK
+                ? ''
+                : `<div style="
+                        position:absolute;
+                        width:60px;
+                        height:60px;
+                        text-align:center;
+                        line-height:60px;
+                        font-size:28px;
+                        color:red;
+                        transform: rotate(${windDir}deg);
+                    ">▲</div>`;
 
-const customIcon = L.divIcon({
-    className: '',
-    html: iconHTML,
-    iconSize: [60, 60],
-    iconAnchor: [30, 30]
-});
+            const iconHTML = `
+            <div style="position:relative;width:60px;height:60px;">
+                <div style="
+                    width:60px;
+                    height:60px;
+                    border-radius:50%;
+                    border:2px solid ${flyable ? 'lime' : 'white'};
+                    background:rgba(0,0,0,0.4);
+                    position:absolute;
+                "></div>
 
-const marker = L.marker([site.lat, site.lon], {
-    icon: customIcon
-}).addTo(map);
+                <div style="
+                    width:60px;
+                    height:60px;
+                    border-radius:50%;
+                    position:absolute;
+                    background:${sectorStyle};
+                    opacity:0.6;
+                "></div>
 
-marker.on("click", () => {
-    showInfoPanel(site, windDir, windSpeed, gust, flyable);
-    map.setView([site.lat, site.lon], 10);
-});
+                ${arrowHTML}
+            </div>`;
+
+            const customIcon = L.divIcon({
+                className: '',
+                html: iconHTML,
+                iconSize: [60, 60],
+                iconAnchor: [30, 30]
+            });
+
+            const marker = L.marker([site.lat, site.lon], {
+                icon: customIcon
+            }).addTo(map);
+
+            marker.on("click", () => {
+                showInfoPanel(site, windDir, windSpeed, gust, flyable);
+                map.setView([site.lat, site.lon], 10);
+            });
 
         })
         .catch(error => {
@@ -205,7 +195,6 @@ marker.on("click", () => {
 function showInfoPanel(site, windDir, windSpeed, gust, flyable) {
 
     const panel = document.getElementById("infoPanel");
-
     panel.style.display = "block";
 
     panel.innerHTML =
