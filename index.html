@@ -5,7 +5,6 @@
 <title>CZ Paragliding Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- ✅ Leaflet CSS -->
 <link rel="stylesheet"
       href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"/>
 
@@ -22,28 +21,52 @@ html, body {
     height: 100vh;
 }
 
-.leaflet-popup-content {
+/* ✅ Wind arrow marker */
+.wind-marker {
+    font-size: 26px;
+    text-align: center;
+    transform-origin: center;
+}
+
+/* ✅ Mobile bottom info panel */
+#infoPanel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.85);
+    color: white;
+    padding: 12px;
     font-size: 14px;
+    display: none;
+    z-index: 1000;
+}
+
+#infoPanel strong {
+    font-size: 16px;
+}
+
+/* ✅ Mobile adjustments */
+@media (max-width: 768px) {
+    .wind-marker {
+        font-size: 32px;
+    }
 }
 </style>
 </head>
 
 <body>
 
-<!-- ✅ REQUIRED ID -->
 <div id="windy"></div>
+<div id="infoPanel"></div>
 
-<!-- ✅ 1️⃣ Leaflet FIRST -->
 <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"></script>
-
-<!-- ✅ 2️⃣ Windy SECOND -->
 <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 
 <script>
 
-// ✅ INSERT YOUR WINDY API KEY HERE
 const options = {
-    key: 'kmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh',
+    key: 'YOUR_WINDY_API_KEY',
     lat: 49.8,
     lon: 15.4,
     zoom: 8,
@@ -51,12 +74,10 @@ const options = {
     level: 'surface'
 };
 
-// ✅ Safety limits
 const MIN_WIND = 2;
 const MAX_WIND = 8;
 const MAX_GUST = 11;
 
-// ✅ Flying sites
 const sites = [
     { name: "Site 1", lat: 48.238592, lon: 19.306783, windMin: 225, windMax: 270 },
     { name: "Site 2", lat: 49.4479, lon: 18.1022, windMin: 150, windMax: 240 },
@@ -64,34 +85,23 @@ const sites = [
     { name: "Site 4", lat: 49.5896, lon: 18.1715, windMin: 350, windMax: 60 }
 ];
 
-// ✅ Direction logic (handles 0° crossing)
 function isDirectionInRange(dir, min, max) {
-    if (min <= max) {
-        return dir >= min && dir <= max;
-    }
+    if (min <= max) return dir >= min && dir <= max;
     return dir >= min || dir <= max;
 }
 
-// ✅ Initialize Windy
 windyInit(options, windyAPI => {
 
     const { map } = windyAPI;
 
-    console.log("✅ Windy Loaded");
-
-    // Optional: restrict zoom
-    map.setMinZoom(6);
-    map.setMaxZoom(12);
-
     loadAllSites(map);
+
 });
 
-// ✅ Load all sites
 function loadAllSites(map) {
     sites.forEach(site => checkWind(site, map));
 }
 
-// ✅ Fetch wind data + create marker
 function checkWind(site, map) {
 
     const url =
@@ -113,34 +123,38 @@ function checkWind(site, map) {
             const gustOK = gust <= MAX_GUST;
 
             const flyable = directionOK && speedOK && gustOK;
+            const markerColor = flyable ? "lime" : "red";
 
-            const markerColor = flyable ? "green" : "red";
+            // ✅ Rotating arrow icon
+            const arrowIcon = L.divIcon({
+                className: '',
+                html:
+                    '<div class="wind-marker" style="color:' + markerColor +
+                    '; transform: rotate(' + windDir + 'deg);">▲</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
 
-            const marker = L.circleMarker(
-                [site.lat, site.lon],
-                {
-                    radius: 8,
-                    color: markerColor,
-                    fillColor: markerColor,
-                    fillOpacity: 0.9
-                }
-            ).addTo(map);
+            const marker = L.marker([site.lat, site.lon], {
+                icon: arrowIcon
+            }).addTo(map);
 
-            marker.bindPopup(
-                "<strong>" + site.name + "</strong><br>" +
-                "Accepted: " + site.windMin + "° – " + site.windMax + "°<br><br>" +
-                (flyable ? "🟢 FLYABLE" : "🔴 NOT FLYABLE") + "<br>" +
-                "Direction: " + windDir + "°<br>" +
-                "Speed: " + windSpeed + " m/s<br>" +
-                "Gust: " + gust + " m/s"
-            );
+            marker.on("click", () => {
+                showInfoPanel(site, windDir, windSpeed, gust, flyable);
+                map.setView([site.lat, site.lon], 10);
+            });
+
         })
         .catch(error => {
             console.error("Wind fetch error:", error);
         });
 }
 
-</script>
+function showInfoPanel(site, windDir, windSpeed, gust, flyable) {
 
-</body>
-</html>
+    const panel = document.getElementById("infoPanel");
+
+    panel.style.display = "block";
+
+    panel.innerHTML =
+        "<strong>" + site.name +
