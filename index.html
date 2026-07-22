@@ -14,21 +14,30 @@ html, body { margin:0; height:100%; }
 
 <script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 
-<script>
-window.addEventListener("load", function () {
+<script src="https://api.windy.com/assets/map-forecast/libBoot.js"></script>
 
-    if (typeof windyInit === "undefined") {
-        console.error("Windy failed to load.");
-        return;
+<script>
+function waitForWindy(callback) {
+    if (typeof windyInit === "function") {
+        callback();
+    } else {
+        setTimeout(() => waitForWindy(callback), 100);
     }
+}
+
+waitForWindy(function () {
 
     windyInit({
-        key: "Ykmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh",
+        key: "kmrq6dIdIm07Uh4Rz8k9J6QFBQL1nSBh",
         lat: 49.8,
         lon: 15.4,
         zoom: 8
     }, function (windyAPI) {
-        console.log("Windy loaded successfully");
+
+        console.log("✅ Windy fully loaded");
+
+        const map = windyAPI.map;
+
     });
 
 });
