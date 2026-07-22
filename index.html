@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>CZ Paragliding Weather</title>
+<title>CZ Paragliding Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -19,7 +19,7 @@ html, body {
 }
 
 #sidebar {
-    width: 260px;
+    width: 320px;
     background: #f4f4f4;
     padding: 15px;
     overflow-y: auto;
@@ -27,14 +27,28 @@ html, body {
 }
 
 .location-item {
-    padding: 8px;
+    padding: 10px;
+    margin-bottom: 12px;
+    border-radius: 6px;
+    background: #e9e9e9;
     cursor: pointer;
-    border-radius: 4px;
-    margin-bottom: 5px;
 }
 
 .location-item:hover {
     background: #ddd;
+}
+
+.status {
+    margin-top: 6px;
+    font-weight: bold;
+}
+
+.flyable {
+    color: green;
+}
+
+.not-flyable {
+    color: red;
 }
 
 iframe {
@@ -48,7 +62,7 @@ iframe {
     }
     #sidebar {
         width: 100%;
-        height: 220px;
+        height: 300px;
     }
 }
 </style>
@@ -59,46 +73,159 @@ iframe {
 <div id="container">
 
     <div id="sidebar">
-        <h2>Flying Sites (CZ)</h2>
-
-        <div class="location-item" onclick="setLocation(50.7322,14.9840)">Ještěd</div>
-        <div class="location-item" onclick="setLocation(50.5836,15.2594)">Kozákov</div>
-        <div class="location-item" onclick="setLocation(50.6526,15.7399)">Černá hora</div>
-        <div class="location-item" onclick="setLocation(49.5044,18.2257)">Radhošť</div>
-        <div class="location-item" onclick="setLocation(48.8754,16.6428)">Pálava</div>
-        <div class="location-item" onclick="setLocation(50.3967,12.9683)">Klínovec</div>
-        <div class="location-item" onclick="setLocation(50.3865,14.2910)">Říp</div>
+        <h2>🪂 Flying Sites</h2>
+        <div id="siteList"></div>
+        <p><small>Auto refresh: 10 minutes</small></p>
     </div>
 
     <iframe
         id="windyFrame"
+        src="https://embed.windy.com/embed2.html?lat=49.8&lon=15.4&zoom=8&level=surface&overlay=wind&type=map"
         width="100%"
-        height="100%"
-        src="https://embed.windy.com/embed2.html?lat=49.8175&lon=15.4730&zoom=8&level=surface&overlay=wind&menu=&message=true&marker=&calendar=&pressure=&type=map&location=coordinates&detail=&detailLat=49.8175&detailLon=15.4730&metricWind=default&metricTemp=default&radarRange=-1"
-    ></iframe>
+        height="100%">
+    </iframe>
 
 </div>
 
 <script>
-function setLocation(lat, lon) {
 
+// ✅ Safety limits
+const MIN_WIND = 2;     // m/s
+const MAX_WIND = 8;     // m/s
+const MAX_GUST = 11;    // m/s
+
+// ✅ Flying sites
+const sites = [
+    {
+        name: "Site 1",
+        lat: 48.238592,
+        lon: 19.306783,
+        windMin: 225,
+        windMax: 270
+    },
+    {
+        name: "Site 2",
+        lat: 49.4479,
+        lon: 18.1022,
+        windMin: 150,
+        windMax: 240
+    },
+    {
+        name: "Site 3",
+        lat: 49.427,
+        lon: 16.5504,
+        windMin: 340,
+        windMax: 60
+    },
+    {
+        name: "Site 4",
+        lat: 49.5896,
+        lon: 18.1715,
+        windMin: 350,
+        windMax: 60
+    }
+];
+
+const siteList = document.getElementById("siteList");
+
+// ✅ Build UI
+sites.forEach(site => {
+
+    const div = document.createElement("div");
+    div.className = "location-item";
+    div.id = "site-" + site.lat;
+
+    div.innerHTML =
+        "<strong>" + site.name + "</strong><br>" +
+        "Accepted: " + site.windMin + "° – " + site.windMax + "°" +
+        "<div class='status' id='status-" + site.lat + "'>Checking...</div>";
+
+    div.onclick = function() {
+        setLocation(site);
+    };
+
+    siteList.appendChild(div);
+});
+
+// ✅ Windy map navigation
+function setLocation(site) {
     const iframe = document.getElementById("windyFrame");
-
     iframe.src =
         "https://embed.windy.com/embed2.html?" +
-        "lat=" + lat +
-        "&lon=" + lon +
-        "&zoom=11" +
+        "lat=" + site.lat +
+        "&lon=" + site.lon +
+        "&zoom=12" +
         "&level=surface" +
         "&overlay=wind" +
-        "&menu=&message=true&marker=true" +
-        "&calendar=&pressure=&type=map" +
-        "&location=coordinates" +
+        "&marker=true" +
         "&detail=true" +
-        "&detailLat=" + lat +
-        "&detailLon=" + lon +
-        "&metricWind=default&metricTemp=default";
+        "&detailLat=" + site.lat +
+        "&detailLon=" + site.lon;
 }
+
+// ✅ Handle direction sectors (including 0° crossing)
+function isDirectionInRange(dir, min, max) {
+    if (min <= max) {
+        return dir >= min && dir <= max;
+    }
+    return dir >= min || dir <= max;
+}
+
+// ✅ Wind check
+function checkWind(site) {
+
+    const url =
+        "https://api.open-meteo.com/v1/forecast?" +
+        "latitude=" + site.lat +
+        "&longitude=" + site.lon +
+        "&current=wind_direction_10m,wind_speed_10m,wind_gusts_10m";
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+
+            const windDir = data.current.wind_direction_10m;
+            const windSpeed = data.current.wind_speed_10m;
+            const gust = data.current.wind_gusts_10m;
+
+            const statusDiv = document.getElementById("status-" + site.lat);
+
+            const directionOK = isDirectionInRange(windDir, site.windMin, site.windMax);
+            const speedOK = windSpeed >= MIN_WIND && windSpeed <= MAX_WIND;
+            const gustOK = gust <= MAX_GUST;
+
+            if (directionOK && speedOK && gustOK) {
+                statusDiv.innerHTML =
+                    "🟢 FLYABLE<br>" +
+                    windDir + "° | " +
+                    windSpeed + " m/s | gust " +
+                    gust + " m/s";
+                statusDiv.className = "status flyable";
+            } else {
+                statusDiv.innerHTML =
+                    "🔴 NOT FLYABLE<br>" +
+                    windDir + "° | " +
+                    windSpeed + " m/s | gust " +
+                    gust + " m/s";
+                statusDiv.className = "status not-flyable";
+            }
+
+        })
+        .catch(error => {
+            console.error("Wind fetch error:", error);
+        });
+}
+
+// ✅ Initial check
+function checkAllSites() {
+    sites.forEach(site => checkWind(site));
+}
+
+checkAllSites();
+
+// ✅ Auto refresh every 10 minutes
+setInterval(checkAllSites, 600000);
+
 </script>
 
 </body>
